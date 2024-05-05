@@ -19,3 +19,7 @@ no quiere y se bugea xd)
 Si en lexico.py marca un error en la linea 92, agregar un guion bajo a cada lado del "name"
 
 if __name__ == "__main__":  (Asi debe de quedar en base a los errores que nos marcaba)
+
+
+#Importante
+Modificar  root.after(250, compilar) si se hace muy lento, agregar mas tiempo

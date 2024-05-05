@@ -13,6 +13,7 @@ tokens = (
     'ASIGNACION',
     'IDENTIFICADOR',
     'COMENTARIO_UNILINEA',
+    'COMENTARIO_MULTILINEA',
 )
 
 # Expresiones regulares para los tokens
@@ -51,43 +52,48 @@ def t_IDENTIFICADOR(t):
     return t
 
 def t_COMENTARIO_UNILINEA(t):
-    r'\#.*\n?'
-    t.lexer.lineno += 1
+    r'//.*\n?'
+    return t
 
-def t_ignore_COMENTARIO(t):
+def t_COMENTARIO_MULTILINEA(t):
     r'/\*(.|\n)*?\*/'
-    t.lexer.lineno += t.value.count('\n')
+    return t
 
 def t_ignore_ESPACIO(t):
-    r'[\s]+'
-    t.lexer.lineno += t.value.count('\n')
-
-def t_newline(t):
-    r'\n+'
-    t.lexer.lineno += len(t.value)
-
+    r'\s+'
+    if('\n+'):
+        t.lexer.lineno += t.value.count('\n')
+    
 def t_error(t):
     global resultado_lexema
-    estado = f"** Error léxico en la línea {t.lineno}, posición {t.lexpos}: Carácter '{t.value[0]}' no válido."
+    estado = f"posición {t.lexpos}: Carácter '{t.value[0]}' no válido."
     resultado_lexema.append(estado)
     t.lexer.skip(1)
 
 # Construyendo el analizador léxico
 analizador = lex.lex()
 
-def analizar_texto(text):
-    
+def analizar_texto(text, linea):
     global resultado_lexema
-    resultado_lexema = []  # Reiniciar la lista de errores léxicos
+    resultado_lexema = [] 
     tokens_reconocidos = []
+    analizador.lineno = 1
     analizador.input(text)
     while True:
         tok = analizador.token()
         if not tok:
-            break  # No más entrada
+            break 
+        #tok.lineno
+        valor_token = tok.value if isinstance(tok.value, str) else str(tok.value)
         
-        tokens_reconocidos.append(f"Línea {tok.lineno}, Posición {tok.lexpos}: {tok.type} {tok.value}")
+        token_info = f"Desde: ({linea}, {tok.lexpos}) " \
+                     f"Hasta: ({linea}, {tok.lexpos + len(valor_token)}) " \
+                     f"{tok.type}: {tok.value}"
+        #print(token_info)
+        tokens_reconocidos.append(token_info)
     return tokens_reconocidos, resultado_lexema
+
+
 
 if __name__ == "__main__":
     codigo_fuente = input("Ingrese el código fuente: ")
