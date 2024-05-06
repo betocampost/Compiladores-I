@@ -106,7 +106,9 @@ def analizar_texto(text):
                         f"Hasta: ({tok.lineno + aux3}, {tok.lexpos - aux2 + len(valor_token)}) " \
                         f"{tok.type}: {tok.value}"
         #print(token_info)
-        tokens_reconocidos.append(token_info)
+        if token_info not in tokens_reconocidos:
+            tokens_reconocidos.append(token_info)
+
     return tokens_reconocidos, resultado_lexema
 
 if __name__ == "__main__":
