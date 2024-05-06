@@ -52,7 +52,7 @@ def t_IDENTIFICADOR(t):
     return t
 
 def t_COMENTARIO_UNILINEA(t):
-    r'//.*\n?'
+    r'//.*'
     return t
 
 def t_COMENTARIO_MULTILINEA(t):
@@ -81,6 +81,7 @@ def analizar_texto(text):
     analizador.input(text)
     aux1 = 1
     aux2 = 0
+    aux3 = 0
     while True:
         tok = analizador.token()
         if not tok:
@@ -90,13 +91,15 @@ def analizar_texto(text):
         if aux1 < tok.lineno:
             aux1 += 1
             aux2 = tok.lexpos
-        if tok.type == 'COMENTARIO_MULTILINEA':
-            token_info = f"Desde: ({tok.lineno}, {tok.lexpos - aux2}) " \
-                        f"Hasta: ({tok.lineno + tok.value.count('\n')}, {tok.lexpos - aux2 + len(valor_token)}) " \
+        if tok.type == 'COMENTARIO_MULTILINEA' and len(tok.value.split('\n')) > 1:
+            token_info = f"Desde: ({tok.lineno + aux3}, {tok.lexpos - aux2}) " \
+                        f"Hasta: ({tok.lineno + tok.value.count('\n') + aux3}, {len(tok.value.split('\n')[-1])}) " \
                         f"{tok.type}: {tok.value}"
+            aux3 += tok.value.count('\n')
+            aux2 = tok.lexpos + len(tok.value) - len(tok.value.split('\n')[-1])
         else:
-            token_info = f"Desde: ({tok.lineno}, {tok.lexpos - aux2}) " \
-                        f"Hasta: ({tok.lineno}, {tok.lexpos - aux2 + len(valor_token)}) " \
+            token_info = f"Desde: ({tok.lineno + aux3}, {tok.lexpos - aux2}) " \
+                        f"Hasta: ({tok.lineno + aux3}, {tok.lexpos - aux2 + len(valor_token)}) " \
                         f"{tok.type}: {tok.value}"
         #print(token_info)
         tokens_reconocidos.append(token_info)
