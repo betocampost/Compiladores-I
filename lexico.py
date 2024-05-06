@@ -66,7 +66,7 @@ def t_ignore_ESPACIO(t):
     
 def t_error(t):
     global resultado_lexema
-    estado = f"posición {t.lexpos}: Carácter '{t.value[0]}' no válido."
+    estado = f"Error en la línea {t.lineno}: Carácter '{t.value[0]}' no válido."
     resultado_lexema.append(estado)
     t.lexer.skip(1)
 
