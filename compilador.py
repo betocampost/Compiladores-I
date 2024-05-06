@@ -112,7 +112,7 @@ def hilo1():
         hilo_lex = threading.Thread(target=compilar)
         hilo_lex.start()
 
-def resaltar_sintaxis(tokens_reconocidos, numero_linea):
+def resaltar_sintaxis(tokens_reconocidos):
     etiquetas = {
         'IDENTIFICADOR': '#0000FF',
         'ENTERO': '#FF0000',
@@ -127,7 +127,7 @@ def resaltar_sintaxis(tokens_reconocidos, numero_linea):
         'COMENTARIO_MULTILINEA': '#FFFFFF'
     }
     for etiqueta, color in etiquetas.items():
-        editor.tag_remove(etiqueta, f'{numero_linea}.0', 'end')
+        editor.tag_remove(etiqueta, '1.0', 'end')
         
     #print(tokens_reconocidos)
     for token_info in tokens_reconocidos:
@@ -157,14 +157,14 @@ def resaltar_sintaxis(tokens_reconocidos, numero_linea):
 def compilar():
     global resultado_lexema
     global hilo_verificacion
-    '''
+    
     codigo = editor.get("1.0", "end-1c")
 
     tokens_codigo, errores_lexicos = analizar_texto(codigo)
 
     actualizar_errores_lexicos(errores_lexicos)
-    resaltar_sintaxis(tokens_codigo)'''
-    codigo = editor.get("1.0", "end-1c")
+    resaltar_sintaxis(tokens_codigo)
+    '''codigo = editor.get("1.0", "end-1c")
 
     lineas_codigo = codigo.split("\n")
 
@@ -180,11 +180,9 @@ def compilar():
         errores_linea_con_linea = [
             f"** Error léxico Línea {numero_linea}, {error_info}"
             for error_info in errores_linea
-        ]
-        resultado_lexico.extend(tokens_linea_con_linea)
-        errores_lexicos.extend(errores_linea_con_linea)
-        actualizar_errores_lexicos(errores_lexicos)
-        resaltar_sintaxis(tokens_linea_con_linea, numero_linea)
+        ]'''
+        #resultado_lexico.extend(tokens_linea_con_linea)
+        #errores_lexicos.extend(errores_linea_con_linea)
 
     for index, area in enumerate(areas_editor):
         if area == "Lexico":
@@ -203,7 +201,7 @@ def compilar():
                 widget_text_lexico.delete(1.0, tk.END)
 
                 # Insertar el resultado del análisis léxico en el widget Text
-                for token_info in resultado_lexico:
+                for token_info in tokens_codigo:
                     widget_text_lexico.insert(tk.END, token_info + "\n")
                 widget_text_lexico.yview_moveto(1.0)
 

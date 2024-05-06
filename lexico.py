@@ -73,22 +73,31 @@ def t_error(t):
 # Construyendo el analizador léxico
 analizador = lex.lex()
 
-def analizar_texto(text, linea):
+def analizar_texto(text):
     global resultado_lexema
     resultado_lexema = [] 
     tokens_reconocidos = []
     analizador.lineno = 1
     analizador.input(text)
+    aux1 = 1
+    aux2 = 0
     while True:
         tok = analizador.token()
         if not tok:
             break 
         #tok.lineno
         valor_token = tok.value if isinstance(tok.value, str) else str(tok.value)
-        
-        token_info = f"Desde: ({linea}, {tok.lexpos}) " \
-                     f"Hasta: ({linea}, {tok.lexpos + len(valor_token)}) " \
-                     f"{tok.type}: {tok.value}"
+        if aux1 < tok.lineno:
+            aux1 += 1
+            aux2 = tok.lexpos
+        if tok.type == 'COMENTARIO_MULTILINEA':
+            token_info = f"Desde: ({tok.lineno}, {tok.lexpos - aux2}) " \
+                        f"Hasta: ({tok.lineno + tok.value.count('\n')}, {tok.lexpos - aux2 + len(valor_token)}) " \
+                        f"{tok.type}: {tok.value}"
+        else:
+            token_info = f"Desde: ({tok.lineno}, {tok.lexpos - aux2}) " \
+                        f"Hasta: ({tok.lineno}, {tok.lexpos - aux2 + len(valor_token)}) " \
+                        f"{tok.type}: {tok.value}"
         #print(token_info)
         tokens_reconocidos.append(token_info)
     return tokens_reconocidos, resultado_lexema
