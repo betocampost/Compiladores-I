@@ -173,32 +173,6 @@ def resaltar_sintaxis(tokens_reconocidos):
 
 
 
-
-def resaltar_comentarios():
-    contenido = editor.get(1.0, tk.END)
-    lineas = contenido.split("\n")
-
-    for i, linea in enumerate(lineas, start=1):
-        # Buscar comentarios unilineales
-        comentarios_unilineales = re.finditer(r'//.*', linea)
-        for match in comentarios_unilineales:
-            inicio = match.start()
-            fin = match.end()
-            editor.tag_add('COMENTARIO_UNILINEA', f'{i}.{inicio}', f'{i}.{fin}')
-
-        # Buscar comentarios multilíneas
-        comentarios_multilineales = re.finditer(r'/\*.*?\*/', linea)
-        for match in comentarios_multilineales:
-            inicio = match.start()
-            fin = match.end()
-            editor.tag_add('COMENTARIO_MULTILINEA', f'{i}.{inicio}', f'{i}.{fin}')
-
-    # Configurar etiquetas de color
-    editor.tag_configure('COMENTARIO_UNILINEA', foreground='#AAAAAA')  # Gris claro
-    editor.tag_configure('COMENTARIO_MULTILINEA', foreground='#666666')  # Gris oscuro
-
-
-
 def compilar():
     global resultado_lexema
     global hilo_verificacion
