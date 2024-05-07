@@ -1,3 +1,6 @@
+'''compilador.py'''
+
+
 import tkinter as tk
 
 from tkinter import ttk, filedialog
@@ -39,6 +42,13 @@ PALABRAS_CLAVE = [
     "None",
 ]
 NOMBRES_VARIABLES = ["x", "y", "z", "contador", "resultado", "temporal"]
+
+def resaltar_palabras_clave(texto):
+    # Crea una expresión regular que coincida con las palabras clave completas
+    patrón = r'\b(?:' + '|'.join(map(re.escape, PALABRAS_CLAVE)) + r')\b'
+    # Utiliza la expresión regular para encontrar las palabras clave y resaltarlas
+    texto_resaltado = re.sub(patrón, r'<strong>\g<0></strong>', texto, flags=re.IGNORECASE)
+    return texto_resaltado
 
 
 def abrir_archivo():
@@ -112,7 +122,7 @@ def hilo1():
         hilo_lex = threading.Thread(target=compilar)
         hilo_lex.start()
 
-def resaltar_sintaxis(tokens_reconocidos):
+def resaltar_sintaxis(tokens_reconocidos, numero_linea):
     etiquetas = {
         'IDENTIFICADOR': '#0000FF',
         'ENTERO': '#FF0000',
@@ -126,12 +136,11 @@ def resaltar_sintaxis(tokens_reconocidos):
         'COMENTARIO_UNILINEA': '#444444',
         'COMENTARIO_MULTILINEA': '#FFFFFF'
     }
+    
     for etiqueta, color in etiquetas.items():
-        editor.tag_remove(etiqueta, '1.0', 'end')
+        editor.tag_remove(etiqueta, f'{numero_linea}.0', 'end')
         
-    #print(tokens_reconocidos)
     for token_info in tokens_reconocidos:
-        #print(token_info)
         tokens_split = token_info.split()
         _, filaI, columnaI, _, filaF, columnaF, tipo = tokens_split[:7]
         tipo = tipo.replace(':', '')
@@ -141,30 +150,72 @@ def resaltar_sintaxis(tokens_reconocidos):
         filaF = filaF.replace('(', '')
         filaF = filaF.replace(',', '')
         columnaF = columnaF.replace(')', '')
-        #print(f"tipo:{tipo}, filaI: {filaI}, columnaI: {columnaI} filaF{filaF}, columnaF: {columnaF}")
         configuracion_etiqueta = etiquetas.get(tipo)
-        #print(configuracion_etiqueta)
         if configuracion_etiqueta:
             inicio = f"{filaI}.{columnaI}"
             fin = f"{filaF}.{columnaF}"
-            #print(tipo, inicio, fin)
             editor.tag_add(tipo, inicio, fin)
 
     for tipo, configuracion_etiqueta in etiquetas.items():
         editor.tag_configure(tipo, foreground=configuracion_etiqueta)
 
+    # Resaltar palabras clave con negrita
+    inicio_linea = f'{numero_linea}.0'
+    fin_linea = f'{numero_linea}.end'
+    texto_linea = editor.get(inicio_linea, fin_linea)
+
+    for palabra in PALABRAS_CLAVE:
+        inicio_palabra = 0
+        while True:
+            inicio_palabra = texto_linea.find(palabra, inicio_palabra)
+            if inicio_palabra == -1:
+                break
+            fin_palabra = inicio_palabra + len(palabra)
+            # Verificar si la palabra es una coincidencia exacta y está rodeada por espacios u otros caracteres
+            if (inicio_palabra == 0 or texto_linea[inicio_palabra - 1] in (' ', '\n', '\t')) and \
+               (fin_palabra == len(texto_linea) or texto_linea[fin_palabra] in (' ', '\n', '\t')):
+                editor.tag_add('PALABRA_RESERVADA', f'{numero_linea}.{inicio_palabra}', f'{numero_linea}.{fin_palabra}')
+                editor.tag_config('PALABRA_RESERVADA', foreground='#FF8800', font=('Courier', 12, 'bold'))
+            inicio_palabra = fin_palabra
+
+
+
+def resaltar_comentarios():
+    contenido = editor.get(1.0, tk.END)
+    lineas = contenido.split("\n")
+
+    for i, linea in enumerate(lineas, start=1):
+        # Buscar comentarios unilineales
+        comentarios_unilineales = re.finditer(r'//.*', linea)
+        for match in comentarios_unilineales:
+            inicio = match.start()
+            fin = match.end()
+            editor.tag_add('COMENTARIO_UNILINEA', f'{i}.{inicio}', f'{i}.{fin}')
+
+        # Buscar comentarios multilíneas
+        comentarios_multilineales = re.finditer(r'/\*.*?\*/', linea)
+        for match in comentarios_multilineales:
+            inicio = match.start()
+            fin = match.end()
+            editor.tag_add('COMENTARIO_MULTILINEA', f'{i}.{inicio}', f'{i}.{fin}')
+
+    # Configurar etiquetas de color
+    editor.tag_configure('COMENTARIO_UNILINEA', foreground='#AAAAAA')  # Gris claro
+    editor.tag_configure('COMENTARIO_MULTILINEA', foreground='#666666')  # Gris oscuro
+
+
 
 def compilar():
     global resultado_lexema
     global hilo_verificacion
-    
+    '''
     codigo = editor.get("1.0", "end-1c")
 
     tokens_codigo, errores_lexicos = analizar_texto(codigo)
 
     actualizar_errores_lexicos(errores_lexicos)
-    resaltar_sintaxis(tokens_codigo)
-    '''codigo = editor.get("1.0", "end-1c")
+    resaltar_sintaxis(tokens_codigo)'''
+    codigo = editor.get("1.0", "end-1c")
 
     lineas_codigo = codigo.split("\n")
 
@@ -180,9 +231,11 @@ def compilar():
         errores_linea_con_linea = [
             f"** Error léxico Línea {numero_linea}, {error_info}"
             for error_info in errores_linea
-        ]'''
-        #resultado_lexico.extend(tokens_linea_con_linea)
-        #errores_lexicos.extend(errores_linea_con_linea)
+        ]
+        resultado_lexico.extend(tokens_linea_con_linea)
+        errores_lexicos.extend(errores_linea_con_linea)
+        actualizar_errores_lexicos(errores_lexicos)
+        resaltar_sintaxis(tokens_linea_con_linea, numero_linea)
 
     for index, area in enumerate(areas_editor):
         if area == "Lexico":
@@ -201,7 +254,7 @@ def compilar():
                 widget_text_lexico.delete(1.0, tk.END)
 
                 # Insertar el resultado del análisis léxico en el widget Text
-                for token_info in tokens_codigo:
+                for token_info in resultado_lexico:
                     widget_text_lexico.insert(tk.END, token_info + "\n")
                 widget_text_lexico.yview_moveto(1.0)
 
@@ -469,12 +522,12 @@ editor.bind("<Button-4>", scroll_numeros_lineas)
 editor.bind("<Button-5>", scroll_numeros_lineas)
 
 # Carga los iconos de acción rápida
-icono_abrir = ImageTk.PhotoImage(Image.open("./Iconos/abrir-documento.png"))
-icono_guardar = ImageTk.PhotoImage(Image.open("./Iconos/guardar.png"))
-icono_compilar = ImageTk.PhotoImage(Image.open("./Iconos/compile.png"))
-icono_salir = ImageTk.PhotoImage(Image.open("./Iconos/exit.png"))
-icono_compilar_y_depurar = ImageTk.PhotoImage(Image.open("./Iconos/debug.png"))
-lupa = ImageTk.PhotoImage(Image.open("./Iconos/lupa.png"))
+icono_abrir = ImageTk.PhotoImage(Image.open("Compiladores-I-main/Iconos/abrir-documento.png"))
+icono_guardar = ImageTk.PhotoImage(Image.open("Compiladores-I-main/Iconos/guardar.png"))
+icono_compilar = ImageTk.PhotoImage(Image.open("Compiladores-I-main/Iconos/compile.png"))
+icono_salir = ImageTk.PhotoImage(Image.open("Compiladores-I-main/Iconos/exit.png"))
+icono_compilar_y_depurar = ImageTk.PhotoImage(Image.open("Compiladores-I-main/Iconos/debug.png"))
+lupa = ImageTk.PhotoImage(Image.open("Compiladores-I-main/Iconos/lupa.png"))
 
 # Agrega botones de acción rápida al menú
 agregar_accion_rapida(lupa, hilo1, 0, 0)
@@ -515,5 +568,7 @@ for area in areas_errores:
     widgets_errores[area] = widget_texto_error
 
 hilo1()
+
+
 
 root.mainloop()

@@ -1,117 +1,129 @@
-import ply.lex as lex
+class AnalizadorLexico:
+    def _init_(self):
+        # Definir las expresiones regulares
+        self.palabras_reservadas = set(['main', 'then', 'if', 'else', 'end', 'do', 'while', 'repeat', 'until', 'cin', 'cout', 'real', 'int', 'integer', 'boolean', 'true', 'false', 'float'])
+        self.simbolos_especiales = {'(': 'PAR_IZQ', ')': 'PAR_DER', '{': 'LLAVE_IZQ', '}': 'LLAVE_DER', ';': 'PUNTO_COMA', ',': 'COMA'}
+        self.operadores_aritmeticos = {'+': 'SUMA', '-': 'RESTA', '*': 'MULTIPLICACION', '/': 'DIVISION', '=': 'ASIGNACION'}
+        self.operadores_relacionales = {'==': 'IGUALDAD', '!=': 'DIFERENTE', '<>': 'DIFERENTE2', '<': 'MENOR_QUE', '>': 'MAYOR_QUE', '<=': 'MENOR_IGUAL_QUE', '>=': 'MAYOR_IGUAL_QUE'}
+        self.operadores_logicos = {'&&': 'AND', '||': 'OR', '!': 'NOT'}
+        self.operadores_dobles = {'++': 'INCREMENTO', '--': 'DECREMENTO'}
+        self.tokens = []
+        self.errors = []
 
-resultado_lexema = []
+    # Método para realizar el análisis léxico
+    def analizar(self, texto):
+        resultados = []
 
-tokens = (
-    'ENTERO',
-    'REAL',
-    'PALABRA_RESERVADA',
-    'OPERADOR_ARITMETICO',
-    'OPERADOR_RELACIONAL',
-    'OPERADOR_LOGICO',
-    'SIMBOLO',
-    'ASIGNACION',
-    'IDENTIFICADOR',
-    'COMENTARIO_UNILINEA',
-    'COMENTARIO_MULTILINEA',
-    'ESPACIO'
-)
+        # Reiniciar la lista de errores
+        self.errors = []
 
-# Expresiones regulares para los tokens
-t_OPERADOR_ARITMETICO = r'[\+\-\*/%^\+\-]{2}|[\+\-\*\/%\^]'
-t_OPERADOR_RELACIONAL = r'[<>]=?|!=|=='
-t_SIMBOLO = r'[()\{\},;]'
-t_ASIGNACION = r'='
+        # Comenzar el análisis caracter por caracter
+        linea = 1
+        col = 1
+        i = 0
+        while i < len(texto):
+            if texto[i].isspace():
+                if texto[i] == "\n":
+                    linea += 1
+                    col = 1
+                else:
+                    col += 1
+                i += 1
+                continue
 
-# Definiciones de token más complejas
-def t_REAL(t):
-    r'\b\d+\.\d+\b|\b\d+\.\b'
-    if '.' in t.value:
-        if t.value.count('.') > 1 or t.value.endswith('.'):
-            estado = f"** Error léxico en la línea {t.lineno}, posición {t.lexpos}: Número real mal formado '{t.value}'."
-            resultado_lexema.append(estado)
-            return
-    t.value = float(t.value)
-    return t
+            # Identificar comentarios de una línea
+            if texto[i:i + 2] == "//":
+                i = texto.find("\n", i)
+                if i == -1:
+                    break
+                linea += 1
+                col = 1
+                continue
 
-def t_ENTERO(t):
-    r'\b\d+\b'
-    t.value = int(t.value)
-    return t
+            # Identificar comentarios multilinea
+            elif texto[i:i + 2] == "/*":
+                end_comment_index = texto.find("*/", i)
+                if end_comment_index == -1:
+                    self.errors.append(f"Error léxico: comentario sin cerrar en línea {linea}")
+                    break  # Salir del bucle si no se encuentra el cierre del comentario
+                else:
+                    linea += texto[i:end_comment_index].count("\n")
+                    i = end_comment_index + 2
+                    continue
 
-def t_PALABRA_RESERVADA(t):
-    r'\b(?:if|else|do|while|switch|case|integer|double|main|cin|cout|int)\b'
-    return t
+            # Identificar palabras reservadas, identificadores y números
+            if texto[i].isalpha():
+                j = i + 1
+                while j < len(texto) and (texto[j].isalnum() or texto[j] == "_"):
+                    j += 1
+                token = texto[i:j]
+                if token in self.palabras_reservadas:
+                    resultados.append(("PALABRA RESERVADA", linea, col, token))
+                else:
+                    resultados.append(("IDENTIFICADOR", linea, col, token))
+                col += j - i
+                i = j
+                continue
+            elif texto[i].isdigit():
+                tiene_punto = False
+                j = i + 1
+                while j < len(texto) and (texto[j].isdigit() or (texto[j] == '.' and not tiene_punto)):
+                    if texto[j] == '.':
+                        tiene_punto = True
+                    j += 1
+                if tiene_punto and texto[j-1] == '.':
+                    self.errors.append(f"Error léxico: formato incorrecto para número flotante en la línea {linea}, columna {col}")
+                else:
+                    if tiene_punto:
+                        resultados.append(("NÚMERO FLOTANTE", linea, col, texto[i:j],))
+                    else:
+                        resultados.append(("NÚMERO ENTERO", linea, col, texto[i:j]))
+                col += j - i
+                i = j
+                continue
 
-# Definir operadores lógicos como tokens individuales
-def t_OPERADOR_LOGICO(t):
-    r'and|or'
-    return t
+            # Identificar símbolos especiales
+            if texto[i] in self.simbolos_especiales:
+                resultados.append((texto[i], self.simbolos_especiales[texto[i]], linea, col))
+                i += 1
+                col += 1
+                continue
 
-def t_IDENTIFICADOR(t):
-    r'\w+(_\d\w)*'
-    return t
+            # Identificar operadores aritméticos y relacionales
+            if texto[i:i + 2] in self.operadores_relacionales:
+                resultados.append((texto[i:i + 2], self.operadores_relacionales[texto[i:i + 2]], linea, col))
+                i += 2
+                col += 2
+                continue
+            elif texto[i] in self.operadores_relacionales:
+                resultados.append((texto[i], self.operadores_relacionales[texto[i]], linea, col))
+                i += 1
+                continue
 
-def t_COMENTARIO_UNILINEA(t):
-    r'//.*'
-    return t
+            # Identificar operadores lógicos
+            if texto[i:i + 2] in self.operadores_logicos:
+                resultados.append((texto[i:i + 2], self.operadores_logicos[texto[i:i + 2]], linea, col))
+                i += 2
+                col += 2
+                continue
+            elif texto[i] in self.operadores_logicos:
+                resultados.append((texto[i], self.operadores_logicos[texto[i]], linea, col))
+                i += 1
+                continue
 
-def t_COMENTARIO_MULTILINEA(t):
-    r'/\*(.|\n)*?\*/'
-    return t
+            if texto[i:i + 2] in self.operadores_dobles:
+                resultados.append((texto[i:i + 2], self.operadores_dobles[texto[i:i + 2]], linea, col))
+                i += 2
+                col += 1
+                continue
+            elif texto[i] in self.operadores_aritmeticos:
+                resultados.append((texto[i], self.operadores_aritmeticos[texto[i]], linea, col))
+                i += 1
+                col += 1
+                continue
 
-def t_ignore_ESPACIO(t):
-    r'\n'
-    t.lexer.lineno += t.value.count('\n')
-    
-def t_ESPACIO(t):
-    r'\s+'
-    return t
-    
-def t_error(t):
-    global resultado_lexema
-    estado = f"Error en la línea {t.lineno}: Carácter '{t.value[0]}' no válido."
-    resultado_lexema.append(estado)
-    t.lexer.skip(1)
+            self.errors.append(f"Error léxico: token no reconocido '{texto[i]}' en la línea {linea}, columna {col}")
+            i += 1
+            col += 1
 
-# Construyendo el analizador léxico
-analizador = lex.lex()
-
-def analizar_texto(text):
-    global resultado_lexema
-    resultado_lexema = [] 
-    tokens_reconocidos = []
-    analizador.lineno = 1
-    analizador.input(text)
-    aux1 = 1
-    aux2 = 0
-    aux3 = 0
-    while True:
-        tok = analizador.token()
-        if not tok:
-            break 
-        #tok.lineno
-        valor_token = tok.value if isinstance(tok.value, str) else str(tok.value)
-        if aux1 < tok.lineno:
-            aux1 += 1
-            aux2 = tok.lexpos
-        if tok.type == 'COMENTARIO_MULTILINEA' and len(tok.value.split('\n')) > 1:
-            token_info = f"Desde: ({tok.lineno + aux3}, {tok.lexpos - aux2}) " \
-                         f"Hasta: ({tok.lineno + tok.value.count('\n') + aux3}, {len(tok.value.split('\n')[-1])}) " \
-                         f"{tok.type}: {tok.value}"
-            aux3 += tok.value.count('\n')
-            aux2 = tok.lexpos + len(tok.value) - len(tok.value.split('\n')[-1]) 
-        elif tok.type != 'ESPACIO':
-            token_info = f"Desde: ({tok.lineno + aux3}, {tok.lexpos - aux2}) " \
-                        f"Hasta: ({tok.lineno + aux3}, {tok.lexpos - aux2 + len(valor_token)}) " \
-                        f"{tok.type}: {tok.value}"
-        #print(token_info)
-        if token_info not in tokens_reconocidos:
-            tokens_reconocidos.append(token_info)
-
-    return tokens_reconocidos, resultado_lexema
-
-if __name__ == "__main__":
-    codigo_fuente = input("Ingrese el código fuente: ")
-    resultado_lexico = analizar_texto(codigo_fuente)
-    print(resultado_lexico)
+        return resultados
